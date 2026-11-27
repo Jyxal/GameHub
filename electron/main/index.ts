@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, session, type IpcMainInvokeEvent } from 'electron'
+import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { registerDeviceHub, type DeviceHubHandle } from './device-hub/index.js'
@@ -27,6 +28,15 @@ function assertTrustedSender(event: IpcMainInvokeEvent): void {
   }
 }
 
+function logDiagnostic(message: string): void {
+  try {
+    const logDirectory = app.getPath('logs')
+    mkdirSync(logDirectory, { recursive: true })
+    appendFileSync(join(logDirectory, 'gamehub.log'), `${new Date().toISOString()} ${message}\n`, 'utf8')
+  } catch {
+    // Logging must never prevent the app from opening.
+  }
+}
 function createMainWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1440,
@@ -35,7 +45,7 @@ function createMainWindow(): void {
     minHeight: 720,
     backgroundColor: '#090e14',
     show: false,
-    title: 'Gaming Environment Platform',
+    title: 'GameHub',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -49,7 +59,7 @@ function createMainWindow(): void {
   // Boş koyu pencereyi göstermeyip renderer hazır olduğunda pencereyi aç.
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
-  deviceHubHandle = registerDeviceHub(mainWindow)
+  deviceHubHandle = registerDeviceHub(mainWindow, { log: logDiagnostic })
 
   if (devServerUrl) {
     void mainWindow.loadURL(devServerUrl)
@@ -59,6 +69,7 @@ function createMainWindow(): void {
 }
 
 app.whenReady().then(() => {
+  app.setAppLogsPath()
   app.on('before-quit', () => deviceHubHandle?.dispose())
 
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
@@ -92,3 +103,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+

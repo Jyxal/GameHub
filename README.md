@@ -1,50 +1,36 @@
-# Gaming Environment Platform
+# GameHub
 
-Windows için yerel öncelikli bir Gaming Hub. Oyun kütüphanesi, donanım, çevre birimleri, profiller ve performans araçlarını tek masaüstü uygulamasında bir araya getirmeyi hedefler. Bu ad geçici proje adıdır; marka adı ayrıca araştırılacaktır.
+Windows için yerel öncelikli oyun merkezi. Kapalı beta sürümü: **0.1.0-beta.1**.
 
-## Teknoloji
+## Geliştirme gereksinimleri
 
-- Electron + React + TypeScript + Vite (`electron-vite`)
-- Yerel veriler için SQLite (veri katmanı sonraki aşamada eklenecek)
-- İleride Windows'a özgü donanım entegrasyonları için sınırlı C#/.NET yardımcı süreci
-
-## Geliştirme ortamı
-
-- Windows 10/11
-- Node.js 22.12+ (Node 24 önerilir)
-- pnpm
-- Visual Studio Code; TypeScript desteği yerleşik, ESLint/Prettier uzantıları önerilir
-
-## Başlatma
+- Windows 10/11 x64
+- Node.js 22.12 veya üstü
+- pnpm (bu depoda tanımlı sürüm: `pnpm@11.25.0`)
 
 ```powershell
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Tür denetimi ve dağıtım derlemesi:
+## Derleme ve kontrol
 
 ```powershell
 pnpm typecheck
 pnpm build
-```
-
-Windows kurulum dosyası oluşturmak için:
-
-```powershell
 pnpm package:win
 ```
 
-Çıktı `release/Gaming-Hub-0.1.0-Setup.exe` konumuna yazılır. Kurulum dosyasını bir kez
-çalıştırıp masaüstü kısayolunu oluşturun; sonraki açılışlar uygulamanın kurulu kopyasından
-yapılır ve portable paketin her açılışta kendini geçici klasöre çıkarması gerekmez.
+Kurulum dosyası `release/GameHub-0.1.0-beta.1-Windows-x64-Setup.exe` yolunda oluşur. Kapalı beta kapsamı, temiz makine gereksinimleri, kurulum ve test adımları için [docs/CLOSED_BETA.md](docs/CLOSED_BETA.md) dosyasına bakın.
 
-## Mimari özeti
+## Ürün durumu
 
-- `electron/main`: pencere, IPC doğrulaması, veritabanı ve Windows servisleri.
-- `electron/preload`: Renderer'a yalnızca açıkça izin verilen API'leri sunan köprü.
+Bu beta davetli test içindir; herkese açık sürüm veya otomatik güncelleme kanalı değildir. Uygulama simgesinde markalı ikon henüz sağlanmadığı için Electron'un varsayılan uygulama ikonu kullanılır. Kapalı beta öncesinde bunun bilinçli geçici seçim olduğunu dikkate alın.
+
+## Mimari
+
+- `electron/main`: pencere, IPC doğrulaması, donanım taraması ve Windows servisleri.
+- `electron/preload`: renderer'a izin verilen API köprüsü.
 - `src/renderer`: React arayüzü; Node.js ve dosya sistemi erişimi yok.
-- `src/shared`: main/preload/renderer arasında paylaşılan API türleri.
-- `docs/ARCHITECTURE.md`: güvenlik sınırları, veri akışı, SQLite ve .NET entegrasyon planı.
-
-Temel işlevler çevrimdışı çalışacak. Hiçbir renderer uzak web içeriği yüklemeyecek; sistem değişikliği yapan entegrasyonlar açık kullanıcı eylemi, doğrulama ve geri alma sunacak.
+- `docs/ARCHITECTURE.md`: güvenlik sınırları ve veri akışı.
+- `docs/DEVICE_HUB.md`: cihaz algılama, pil verisi ve teknik sınırlamalar.

@@ -80,7 +80,7 @@ export class WindowsPnpProvider implements DeviceDiscoverySource {
     return buildBluetoothBatteryMap(await this.host.request('battery'));
   }
 
-  onHardwareChange(listener: () => void): () => void {
+  onHardwareChange(listener: (kind: 'arrival' | 'removal' | 'other') => void): () => void {
     this.host.on('change', listener);
     return () => this.host.off('change', listener);
   }

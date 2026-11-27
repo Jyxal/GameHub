@@ -14,7 +14,7 @@ interface Pending {
 }
 
 export interface PowerShellHostEvents {
-  change: [];
+  change: [kind: 'arrival' | 'removal' | 'other'];
   ready: [watcher: boolean];
   unavailable: [reason: string];
 }
@@ -99,7 +99,8 @@ export class PowerShellHost extends EventEmitter<PowerShellHostEvents> {
       return;
     }
     if (m.type === 'change') {
-      this.emit('change');
+      const kind = (m as { kind?: unknown }).kind;
+      this.emit('change', kind === 'arrival' || kind === 'removal' ? kind : 'other');
       return;
     }
     if (typeof m.id !== 'number') return;

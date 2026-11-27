@@ -3,7 +3,7 @@ import { computeSummary } from '../../../src/shared/device-hub/summary.js';
 import type { DeviceHubSettings, DeviceHubSnapshot, DeviceHubStatus, DeviceInfo } from '../../../src/shared/device-hub/types.js';
 import { BatteryService } from './battery/battery-service.js';
 import { diffDevices, type DeviceEvent } from './events/diff.js';
-import { DeviceMonitor, type ScanReason } from './events/device-monitor.js';
+import { DeviceMonitor, type HardwareChangeKind, type ScanReason } from './events/device-monitor.js';
 import type { NotificationService } from './notifications/notification-service.js';
 import type { ProviderRegistry } from './providers/registry.js';
 import type { DeviceDiscoverySource } from './providers/types.js';
@@ -24,6 +24,7 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
   private initialDone = false;
   private scanning: Promise<void> | null = null;
   private rescanRequested = false;
+  private pendingHardwareChange: HardwareChangeKind | undefined;
   private lastSignature = '';
   private disposed = false;
   private readonly pendingConnectionNotifications = new Map<string, { type: DeviceEvent['type']; connected: boolean; timer: NodeJS.Timeout }>();
@@ -41,7 +42,7 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
   ) {
     super();
     this.status = { platformSupported: source.isSupported(), monitorMode: 'unavailable', lastScanAt: null, lastBatteryPollAt: null, lastError: null };
-    this.monitor = new DeviceMonitor(source, (r) => void this.scan(r), () => this.settings.get().devicePollIntervalMs, 5_000);
+    this.monitor = new DeviceMonitor(source, (r, change) => void this.scan(r, change), () => this.settings.get().devicePollIntervalMs, 5_000);
     this.battery = new BatteryService(source, registry, log);
   }
 
@@ -95,8 +96,9 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
   }
 
   /** Tek seferde bir tarama; tarama sırasında gelen istekler bir kez daha tarama yapar. */
-  scan(reason: ScanReason): Promise<void> {
+  scan(reason: ScanReason, hardwareChange?: HardwareChangeKind): Promise<void> {
     if (this.disposed) return Promise.resolve();
+    if (hardwareChange) this.pendingHardwareChange = hardwareChange;
     if (this.scanning) {
       this.rescanRequested = true;
       return this.scanning;
@@ -104,7 +106,9 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
     this.scanning = (async () => {
       do {
         this.rescanRequested = false;
-        await this.runScan(reason);
+        const change = this.pendingHardwareChange;
+        this.pendingHardwareChange = undefined;
+        await this.runScan(reason, change);
       } while (this.rescanRequested && !this.disposed);
     })().finally(() => {
       this.scanning = null;
@@ -112,7 +116,7 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
     return this.scanning;
   }
 
-  private async runScan(reason: ScanReason): Promise<void> {
+  private async runScan(reason: ScanReason, hardwareChange?: HardwareChangeKind): Promise<void> {
     const now = Date.now();
     let scanned: MergedDevice[];
     try {
@@ -148,7 +152,16 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
     for (const ev of events) {
       const dev = this.devices.get(ev.deviceId);
       if (!dev) continue;
-      this.scheduleStableConnectionNotification(ev, dev.connectionStatus === 'connected');
+      const isSystemAdapter = /(?:wireless|wi-?fi|wlan|bluetooth).{0,24}(?:adapter|network|radio)|(?:adapter|network|radio).{0,24}(?:wireless|wi-?fi|wlan|bluetooth)/i.test(dev.displayName);
+      const physicalUsbPeripheral =
+        (dev.connectionType === 'wired-usb' || dev.connectionType === 'wireless-usb') &&
+        dev.category !== 'wireless-receiver' &&
+        !isSystemAdapter;
+      const isPhysicalArrival = hardwareChange === 'arrival' && ev.type === 'new' && physicalUsbPeripheral;
+      const isPhysicalRemoval = hardwareChange === 'removal' && ev.type === 'disconnected' && physicalUsbPeripheral;
+      if (isPhysicalArrival || isPhysicalRemoval) {
+        this.scheduleStableConnectionNotification(ev, dev.connectionStatus === 'connected');
+      }
     }
 
     // Yeni bağlanan cihazların pili hemen okunur (diğerleri periyodik sorguda).
@@ -174,7 +187,7 @@ export class DeviceHubService extends EventEmitter<DeviceHubServiceEvents> {
       if (!dev || dev.connectionStatus !== 'connected') continue;
       const updated: DeviceInfo = { ...dev, battery };
       this.devices.set(id, updated);
-      this.notifications.handleBattery(updated, battery);
+      // Pil durumu arayüzde gösterilir; bildirimler yalnızca fiziksel takma/çıkarma içindir.
     }
   }
 

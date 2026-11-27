@@ -45,7 +45,7 @@ export interface DeviceDiscoverySource {
   enumerate(): Promise<MergedDevice[]>;
   readBluetoothBatteries(): Promise<Map<string, BluetoothBatteryReading>>;
   /** Donanım değişikliği bildirimi (olay tabanlı). Abonelikten çıkış fonksiyonu döner. */
-  onHardwareChange(listener: () => void): () => void;
+  onHardwareChange(listener: (kind: 'arrival' | 'removal' | 'other') => void): () => void;
   monitorMode(): MonitorMode;
   dispose(): void;
 }

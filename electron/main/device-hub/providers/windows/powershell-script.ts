@@ -82,7 +82,9 @@ while ($true) {
     $ev = Wait-Event -SourceIdentifier 'DeviceHubChange' -Timeout 1
     if ($ev) {
       Get-Event -SourceIdentifier 'DeviceHubChange' -ErrorAction SilentlyContinue | Remove-Event -ErrorAction SilentlyContinue
-      Send-Line ([ordered]@{ type = 'change' })
+      $eventType = $ev.SourceEventArgs.NewEvent.EventType
+      $kind = if ($eventType -eq 3) { 'arrival' } elseif ($eventType -eq 4) { 'removal' } else { 'other' }
+      Send-Line ([ordered]@{ type = 'change'; kind = $kind })
     }
   } else {
     [void]$task.Wait(1000)

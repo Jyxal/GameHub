@@ -1,6 +1,7 @@
 import type { DeviceDiscoverySource } from '../providers/types.js';
 
 export type ScanReason = 'initial' | 'event' | 'poll' | 'manual' | 'resume';
+export type HardwareChangeKind = 'arrival' | 'removal' | 'other';
 
 /**
  * Cihaz izleyici: olay tabanlı (Win32_DeviceChangeEvent) + debounced tetikleme,
@@ -16,7 +17,7 @@ export class DeviceMonitor {
 
   constructor(
     private readonly source: DeviceDiscoverySource,
-    private readonly requestScan: (reason: ScanReason) => void,
+    private readonly requestScan: (reason: ScanReason, hardwareChange?: HardwareChangeKind) => void,
     private readonly getPollIntervalMs: () => number,
     private readonly debounceMs = 1_500,
   ) {}
@@ -24,7 +25,7 @@ export class DeviceMonitor {
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.unsubscribe = this.source.onHardwareChange(() => this.onHardwareChange());
+    this.unsubscribe = this.source.onHardwareChange((kind) => this.onHardwareChange(kind));
     this.schedulePoll();
   }
 
@@ -33,12 +34,12 @@ export class DeviceMonitor {
     this.lastScanAt = at;
   }
 
-  private onHardwareChange(): void {
+  private onHardwareChange(kind: HardwareChangeKind): void {
     if (!this.running) return;
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
-      this.requestScan('event');
+      this.requestScan('event', kind);
     }, this.debounceMs);
   }
 

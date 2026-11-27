@@ -41,8 +41,8 @@ function createMainWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
-    minWidth: 1100,
-    minHeight: 720,
+    minWidth: 760,
+    minHeight: 560,
     backgroundColor: '#090e14',
     show: false,
     title: 'GameHub',

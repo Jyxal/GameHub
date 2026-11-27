@@ -132,7 +132,7 @@ function App() {
 }
 
 function NavItem({ item, active, onClick }: { item: (typeof navigation)[number]; active: boolean; onClick: () => void }) {
-  return <button className={`nav-item${active ? ' active' : ''}`} onClick={onClick}><Icon name={item.icon} size={17} /><span>{item.label}</span>{active && <span className="nav-active-mark" />}</button>
+  return <button className={`nav-item${active ? ' active' : ''}`} onClick={onClick} title={item.label} aria-label={item.label}><Icon name={item.icon} size={17} /><span>{item.label}</span>{active && <span className="nav-active-mark" />}</button>
 }
 
 function Overview({
